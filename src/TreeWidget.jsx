@@ -213,7 +213,6 @@ function TreeWidget() {
         <p>Features demonstrated:</p>
         <ul>
           <li>✓ Virtual scrolling for large datasets (1000+ items)</li>
-          <li>✓ </li>
           <li>✓ Collapsible/expandable nodes</li>
           <li>✓ Click to expand/collapse</li>
         </ul>
