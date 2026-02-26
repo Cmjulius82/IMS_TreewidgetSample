@@ -2,51 +2,27 @@ import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Tree } from "react-arborist";
 import "./TreeWidget.css";
 
-/* ── data generation ──────────────────────────────────────────────── */
+/* ── parse JSON string datasource and auto-assign IDs ─────────────── */
 
-const STATUSES = ["In Progress", "Completed", "Under Review", "Cancelled"];
-const CREATORS = [
-  "John Smith", "Sarah Johnson", "Michael Chen", "Emily Davis",
-  "David Wilson", "Lisa Anderson", "James Brown", "Maria Garcia",
-  "Robert Taylor", "Jennifer Lee", "William Martinez", "Patricia Robinson",
-];
+let _idCounter = 0;
 
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-const randomDate = () => {
-  const start = new Date(2025, 0, 1);
-  const end = new Date(2026, 1, 3);
-  const d = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-};
-
-const makeNode = (id, label, children) => ({
-  id,
-  name: label,
-  status: pick(STATUSES),
-  creator: pick(CREATORS),
-  date: randomDate(),
-  children,
-});
-
-const generateTreeData = () => {
-  const data = [];
-  for (let i = 1; i <= 50; i++) {
-    const cat = String(i).padStart(4, "0");
-    const childCount = i === 1 ? 5 : 20;
-    data.push(
-      makeNode(
-        String(i),
-        `MDG-OTP-${cat}-0000`,
-        Array.from({ length: childCount }, (_, j) => {
-          const item = String(j + 1).padStart(4, "0");
-          return makeNode(`${i}-${j}`, `MDG-OTP-${cat}-${item}`);
-        }),
-      ),
+function assignIds(node, prefix) {
+  const id = prefix || String(++_idCounter);
+  const result = { ...node, id };
+  if (node.children && node.children.length > 0) {
+    result.children = node.children.map((child, i) =>
+      assignIds(child, `${id}-${i + 1}`),
     );
   }
-  return data;
-};
+  return result;
+}
+
+function parseDataSource(jsonString) {
+  _idCounter = 0;
+  const parsed = JSON.parse(jsonString);
+  const nodes = Array.isArray(parsed) ? parsed : [parsed];
+  return nodes.map((n, i) => assignIds(n, String(i + 1)));
+}
 
 /* ── status → CSS class mapping ───────────────────────────────────── */
 
@@ -108,9 +84,13 @@ function Node({ node, style, dragHandle, tree }) {
             <Highlight text={status} term={term} />
           </span>
         )}
-        <span className="node-meta">
-          <Highlight text={creator} term={term} /> &middot; {date}
-        </span>
+        {(creator || date) && (
+          <span className="node-meta">
+            {creator && <Highlight text={creator} term={term} />}
+            {creator && date && <> &middot; </>}
+            {date && date}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -118,8 +98,8 @@ function Node({ node, style, dragHandle, tree }) {
 
 /* ── main widget ──────────────────────────────────────────────────── */
 
-function TreeWidget() {
-  const [data] = useState(generateTreeData);
+function TreeWidget({ dataSource }) {
+  const [data] = useState(() => parseDataSource(dataSource));
   const [search, setSearch] = useState("");
   const treeRef = useRef(null);
   const wrapperRef = useRef(null);
